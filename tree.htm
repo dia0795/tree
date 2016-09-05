@@ -1,0 +1,188 @@
+<html>
+<head>
+<style>
+/*Some basic CSS*/
+* {margin: 0; padding: 0;}
+/*To remove the scrollers*/
+#canvas {display: block;}
+</style>
+<script>
+window.onload = function(){
+	var canvas = document.getElementById("canvas");
+	var ctx = canvas.getContext("2d");
+	//Lets resize the canvas to occupy the full page
+	var W = window.innerWidth;
+	var H = window.innerHeight;
+	var treeColor='rgb(21,88,152)';
+	var leavesColor='#9f9';
+	var minLength = 8;
+	canvas.width = W;
+	canvas.height = H;
+	
+	//Some variables
+	var length, divergence, reduction, line_width, start_points = [];
+	
+	init();
+	
+	function RandomColor(){
+		var result='rgb(';
+		result+= Math.round(Math.round(Math.random()*255));
+		result+=',';
+		result+= Math.round(Math.round(Math.random()*255));
+		result+=',';
+		result+= Math.round(Math.round(Math.random()*255));
+		result+=')';
+		return result;
+	}
+	
+	function init()
+	{
+		W = window.innerWidth;
+		H = window.innerHeight;
+		canvas.width = W;
+		canvas.height = H;
+		minLength = 6 + Math.round(Math.random()*8);
+		//filling the canvas white
+		treeColor = RandomColor();
+		leavesColor = RandomColor();
+		ctx.fillStyle = "white";
+		ctx.fillRect(0, 0, W, H);
+		//Lets draw the trunk of the tree
+		//lets randomise the variables
+		//length of the trunk - 100-150
+		length = 180 + Math.round(Math.random()*30);
+		//angle at which branches will diverge - 10-60
+		//divergence = 10 + Math.round(Math.random()*50);
+		changeDivergence();
+		//Every branch will be 0.75times of the previous one - 0.5-0.75
+		//with 2 decimal points
+		changeReduction();
+		//width of the branch/trunk
+		line_width = 20;
+		
+		//This is the end point of the trunk, from where branches will diverge
+		var trunk = {x: W/2, y: length+50, angle: 90};
+		//It becomes the start point for branches
+		start_points = []; //empty the start points on every init();
+		start_points.push(trunk);
+		
+		//Y coordinates go positive downwards, hence they are inverted by deducting it
+		//from the canvas height = H
+		ctx.beginPath();
+		ctx.moveTo(trunk.x, H-50);
+		ctx.lineTo(trunk.x, H-trunk.y);
+		ctx.strokeStyle = treeColor;
+		ctx.lineWidth = line_width;
+		ctx.stroke();
+		
+		branches();
+	}
+	
+	function changeReduction(){
+		reduction = Math.round(65 + Math.random()*15)/100;
+		return reduction;
+	}
+	
+	function changeDivergence(){
+		divergence = 10 + Math.round(Math.random()*75);
+		return divergence;
+	}
+	
+	//Lets draw the branches now
+	function branches()
+	{
+		
+		var redu = changeReduction();
+		var diver = changeDivergence();
+		
+		treeColor = RandomColor();
+		leavesColor = RandomColor();
+		//reducing line_width and length
+		line_width = line_width * redu;
+		ctx.lineWidth = line_width;
+		
+		var new_start_points = [];
+		//ctx.beginPath();
+		for(var i = 0; i < start_points.length; i++)
+		{
+			var sp = start_points[i];
+			//2 branches will come out of every start point. Hence there will be
+			//2 end points. There is a difference in the divergence.
+			var diver1 = changeDivergence();
+			var redu1 = changeReduction();
+			var len1 = length * redu1;
+			var ep1 = get_endpoint(sp.x, sp.y, sp.angle+diver1, len1);
+			var diver2 = changeDivergence();
+			var redu2 = changeReduction();
+			var len2 = length * redu2;
+			var ep2 = get_endpoint(sp.x, sp.y, sp.angle-diver2, len2);
+			//var ep3 = get_endpoint(sp.x, sp.y, sp.angle, length);
+			
+			//drawing the branches now
+			ctx.beginPath();
+			ctx.moveTo(sp.x, H-sp.y);
+			ctx.lineTo(ep1.x, H-ep1.y);
+				ctx.strokeStyle=RandomColor();
+				setTimeout(ctx.stroke(),50);
+			ctx.beginPath();
+			ctx.moveTo(sp.x, H-sp.y);
+			ctx.lineTo(ep2.x, H-ep2.y);
+				ctx.strokeStyle=RandomColor();
+				setTimeout(ctx.stroke(),50);
+			//ctx.moveTo(sp.x, H-sp.y);
+			//ctx.lineTo(ep3.x, H-ep3.y);
+			
+			//Time to make this function recursive to draw more branches
+			ep1.angle = sp.angle+diver;
+			ep2.angle = sp.angle-diver;
+			//ep3.angle = sp.angle;
+			
+			new_start_points.push(ep1);
+			new_start_points.push(ep2);
+			//new_start_points.push(ep3);
+			if(length>50){
+				var diver3 = changeDivergence();
+				var redu3 = changeReduction();
+				var len3 = length * redu3;
+				var ep3 = get_endpoint(sp.x, sp.y, sp.angle, len3);
+				ctx.beginPath();
+				ctx.moveTo(sp.x, H-sp.y);
+				ctx.lineTo(ep3.x, H-ep3.y);
+				ctx.strokeStyle=RandomColor();
+				setTimeout(ctx.stroke(),50);
+				ep3.angle = sp.angle;
+				new_start_points.push(ep3);
+			}
+		}
+		//Lets add some more color
+		changeReduction();
+		length = length * redu;
+		//if(length < 10) ctx.strokeStyle = leavesColor;
+		//else ctx.strokeStyle = treeColor;
+		//ctx.stroke();
+		start_points = new_start_points;
+		//recursive call - only if length is more than 2.
+		//Else it will fall in an long loop
+		if(length > minLength) setTimeout(branches, 50);
+		else setTimeout(init, 2500);
+	}
+	
+	function get_endpoint(x, y, a, length)
+	{
+		//This function will calculate the end points based on simple vectors
+		//http://physics.about.com/od/mathematics/a/VectorMath.htm
+		//You can read about basic vectors from this link
+		var epx = x + length * Math.cos(a*Math.PI/180);
+		var epy = y + length * Math.sin(a*Math.PI/180);
+		return {x: epx, y: epy};
+	}
+	
+	
+	
+}
+</script>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+</body>
+</html>
